@@ -46,6 +46,10 @@ push:
 # run docker imaghe
 #
 
+# default setting for docker run
+RUNTIME_SERVER_IP=
+RUNTIME_SERVER_OPTION=
+
 # use containername for run/stop/attach/check
 CONTAINERNAME=my_apprtc
 
@@ -54,8 +58,9 @@ CONTAINERNAME=my_apprtc
 # if you use "-ti" (interactive shell) option, you can detach shell by pressing Ctrl-P Ctrl-Q
 
 # you can override SERVER_IP and SERVER_OPTION by setting docker --env option like below
-#RUNTIME_SERVER_IP="--env SERVER_IP=0.0.0.0"
-#RUNTIME_SERVER_OPTION="--env SERVER_OPTION=\"--enable_host_checking=false\" "
+#RUNTIME_SERVER_IP=--env SERVER_IP=0.0.0.0
+#RUNTIME_SERVER_OPTION=--env SERVER_OPTION="--enable_host_checking=false"
+#RUNTIME_SERVER_OPTION=--env SERVER_OPTION="--enable_host_checking=false --log_level debug"
 
 # default network mode = bridge when --network option not specified in "docker run" command.
 

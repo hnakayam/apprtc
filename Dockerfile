@@ -2,6 +2,19 @@
 
 FROM golang:1.17.5-alpine3.15
 
+# options for Google App Server for local development
+# use "server_ip" and "server_option" default value in docker build  
+ARG server_ip="0.0.0.0"
+ARG server_option="--enable_host_checking=false"
+
+# use ENV to override server ip/option in order to modify these settings in docker run
+ENV server_ip $server_ip
+ENV server_option $server_option
+
+# options for SSL Certificate common name (also used for Subject Alt Name)
+# this is only used in docker build time
+ARG cert_cn="localhost"
+
 # Install and download deps.
 RUN apk add --no-cache git curl python2 build-base openssl-dev openssl 
 RUN git clone https://github.com/webrtc/apprtc.git
@@ -21,7 +34,7 @@ RUN python apprtc/build/build_app_engine_package.py apprtc/src/ apprtc/out/ \
 
 # Wrap AppRTC GAE app in a bash script due to needing to run two apps within one container.
 RUN echo -e "#!/bin/sh\n" > /go/start.sh \
-    && echo -e "`pwd`/google-cloud-sdk/bin/dev_appserver.py --host 0.0.0.0 `pwd`/apprtc/out/app.yaml &\n" >> /go/start.sh
+    && echo -e "`pwd`/google-cloud-sdk/bin/dev_appserver.py --host $server_ip $server_option `pwd`/apprtc/out/app.yaml &\n" >> /go/start.sh
 
 # Collider setup
 # Go environment setup.
@@ -46,11 +59,12 @@ RUN curl  https://www.stunnel.org/archive/5.x/stunnel-${STUNNEL_VERSION}.tar.gz 
 WORKDIR /usr/src/stunnel-${STUNNEL_VERSION}
 RUN ./configure --prefix=/usr && make && make install
 
+# create self signed certificate. check /cert/cert.cnf for configurations
 RUN mkdir /cert
+RUN printf "[dn]\nCN=${cert_cn}\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:${cert_cn}\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth" > /cert/cert.cnf
 RUN openssl req -x509 -out /cert/cert.crt -keyout /cert/key.pem \
   -newkey rsa:2048 -nodes -sha256 \
-  -subj '/CN=localhost' -extensions EXT -config <( \
-   printf "[dn]\nCN=localhost\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:localhost\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth") \
+  -subj "/CN=${cert_cn}" -extensions EXT -config /cert/cert.cnf \
   && cat /cert/key.pem > /cert/cert.pem \
   && cat /cert/cert.crt >> /cert/cert.pem \
   && chmod 600 /cert/cert.pem /cert/key.pem /cert/cert.crt
